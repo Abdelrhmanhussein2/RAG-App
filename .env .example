@@ -1,2 +1,5 @@
 APP_NAME="RAG-APP"
 APP_ENV=local
+FILE_ALLOWED_TYPES = ["text/plain","application/pdf","application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
+FILE_MAX_SIZE_MB=10
+FILE_DEFAULT_CHUNK_SIZE=500
