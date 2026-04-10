@@ -15,8 +15,13 @@ class processController(BaseController):
     def get_file_extensions(self,file_id:str):
         return os.path.splitext(file_id)[-1]
     
-    def get_loader(self, file_id:str,file_path:str):
+    def get_loader(self, file_id:str):
         file_extension=self.get_file_extensions(file_id=file_id)
+        file_path=os.path.join(self.project_path,file_id)
+
+        if not os.path.exists(file_path):
+            return None
+
         if file_extension == processingEnum.TXT.value:
             return TextLoader(file_path,encoding="utf-8")
         elif file_extension == processingEnum.PDF.value:
@@ -24,8 +29,7 @@ class processController(BaseController):
         return None
     
     def get_content(self,file_id:str):
-        file_path=os.path.join(self.project_path,file_id)
-        loader=self.get_loader(file_id=file_id,file_path=file_path)
+        loader=self.get_loader(file_id=file_id)
         if loader is not None:
             return loader.load()
         return None

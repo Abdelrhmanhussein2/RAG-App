@@ -5,7 +5,7 @@ class ProjectModel(BaseDataModel):
     def __init__(self,db_client):
         super().__init__(db_client)
         self.collection = self.db_client[DataBaseEnum.COLLECTION_PROJECTS.value]
-    @staticmethod
+    @classmethod
     async def create_instance(cls,db_client:object):
         instance=cls(db_client)
         await instance.init_collection()
@@ -17,7 +17,7 @@ class ProjectModel(BaseDataModel):
         all_collections=await self.db_client.list_collection_names()
         if DataBaseEnum.COLLECTION_PROJECTS.value not in all_collections:
             await self.db_client.create_collection(DataBaseEnum.COLLECTION_PROJECTS.value)
-            indexes=project.get_indecies()
+            indexes=project.Project.get_indecies()
             for index in indexes:
                 await self.collection.create_index(
                     index["key"],
@@ -53,5 +53,5 @@ class ProjectModel(BaseDataModel):
         cursor=self.collection.find().skip((page-1)*page_size).limit(page_size)
         projects=[]
         async for document in cursor:
-            projects.append(project(**document))
+            projects.append(project.Project(**document))
         return projects,total_pages

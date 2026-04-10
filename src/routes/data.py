@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, UploadFile, Depends, Request
 from controllers import DataController, ProjectController,processController
 from helpers.config import settings
@@ -7,8 +8,13 @@ import os
 from routes.schemes import process
 from models.enums.ResponseEnums import ResponseStatus
 from models import BaseDataModel,ProjectModel
-from models.db_schemes import DataChunk
+from models.db_schemes import DataChunk,asset
 from models.ChunkModel import ChunkModel
+from models.Assetmodel import assetmoedl
+from models.enums import AssetTypeEnum
+import logging
+
+logger=logging.getLogger('uvicorn.error')
 
 data_router = APIRouter(prefix="/data", tags=["Data"])
 
@@ -44,10 +50,25 @@ async def upload_file(request: Request, project_id: str, file: UploadFile,
         print(f"Error saving file: {e}")
         return {"message": ResponseStatus.UPLOAD_FAILED.value}
 
+
+    asset_model=await assetmoedl.create_instance(
+        db_client=request.app.mongodb
+    )
+
+    asset_resource=asset(
+        asset_project_id=str(project.project_id),
+        asset_type=AssetTypeEnum.File.value,
+        asset_name=file_id,
+        asset_size=file.size
+    )
+
+    asset_id=await asset_model.create_asset(asset=asset_resource)
+
+
     return JSONResponse(
     content={
         "message": ResponseStatus.FILE_VALIDATED_SUCCESS.value,
-        "file_id": file_id,
+        "file_id": str(asset_id),
         "project_id": str(project.project_id)
         
     },
@@ -59,51 +80,96 @@ async def upload_file(request: Request, project_id: str, file: UploadFile,
     
 @data_router.post("/process/{project_id}")
 async def process_file(request: Request, project_id: str, process_request: process):
-    file_id=process_request.file_id
-    chunk_size=process_request.chunk_size
-    overlap=process_request.overlap
-    do_reset=process_request.do_reset
+    chunk_size = process_request.chunk_size
+    overlap = process_request.overlap
+    do_reset = process_request.do_reset
+
     project_model = await ProjectModel.create_instance(db_client=request.app.mongodb)
-    project= await project_model.get_project_or_create(project_id=project_id)
-    
+    project = await project_model.get_project_or_create(project_id=project_id)
+
     chunk_model = await ChunkModel.create_instance(db_client=request.app.mongodb)
-    deleted_count = 0
-    if do_reset:
-        deleted_count = await chunk_model.delete_project_chunks(project_id=project_id)
-        print(f"Entities deleted: {deleted_count}")
 
-    file_content=processController(project_id=project_id).get_content(file_id=file_id)
-    file_chunks=processController(project_id=project_id).split_content(
-        content=file_content,
-        file_id=file_id,
-        chunk_size=chunk_size,
-        chunk_overlap=overlap
-    )
-    
-    if file_chunks is None:
+    file_ids = {}
+
+    if process_request.file_id:
+        asset_model = await assetmoedl.get_asset_by_id(
+            asset_id=process_request.file_id   # ✅ التعديل الأول
+        )
+
+        if asset_model is None:
+            return JSONResponse(
+                content={"message": ResponseStatus.NO_PROJECT_FOUND.value},
+                status_code=404
+            )
+
+        file_ids = {
+            str(asset_model.id): asset_model.asset_name
+        }
+
+    else:
+        asset_model = await assetmoedl.create_instance(
+            db_client=request.app.mongodb
+        )
+        project_ids = await asset_model.get_all_assets(
+            project_id=project.project_id,
+            asset_type=AssetTypeEnum.FILE.value
+        )
+        file_ids = {
+            str(record.id): record.asset_name
+            for record in project_ids
+        }
+
+    if len(file_ids) == 0:
         return JSONResponse(
-            content={
-                "message": ResponseStatus.PROCESSING_FAILED.value
-            },
-            status_code=500
+            content={"message": ResponseStatus.NO_FILE_FOUND.value},
+            status_code=404
         )
 
-    file_chunk_record=[
-        DataChunk(
-            chunk_text=chunk.page_content,
-            chunk_order=i,
-            chunk_project_id=project_id,
+    if do_reset:
+        await chunk_model.delete_project_chunks(project_id=project_id)
+
+    process_controller = processController(project_id=project_id)
+    records = 0
+    no_files = 0
+
+    for _id, file_id in file_ids.items():
+        file_content = process_controller.get_content(file_id=file_id)
+
+        if file_content is None:
+            logger.error(f"Error while processing file:{file_id}")
+            continue
+
+        file_chunks = process_controller.split_content(
+            content=file_content,
+            file_id=file_id,
+            chunk_size=chunk_size,
+            chunk_overlap=overlap
         )
-        for i, chunk in enumerate(file_chunks)
-    ]
 
-    records=await chunk_model.insert_many_chunk(chunk=file_chunk_record)
+        if file_chunks is None:
+            return JSONResponse(
+                content={"message": ResponseStatus.PROCESSING_FAILED.value},
+                status_code=500
+            )
 
+        file_chunk_record = [
+            DataChunk(
+                chunk_text=chunk.page_content,
+                chunk_order=i,
+                chunk_project_id=project_id,
+                chunk_asset_id=_id
+            )
+            for i, chunk in enumerate(file_chunks)
+        ]
+
+        records = await chunk_model.insert_many_chunk(chunk=file_chunk_record)
+        no_files += 1
+
+    # ✅ التعديل التاني: الـ return برا اللوب
     return JSONResponse(
         content={
             "message": ResponseStatus.PROCESSING_SUCCESS.value,
-            "records": records,
-            "deleted_count": deleted_count
+            "Processed_files": no_files
         },
         status_code=200
     )

@@ -8,6 +8,7 @@ class DataChunk(BaseModel):
     chunk_text: str = Field(..., min_length=1)
     chunk_order: int = Field(..., ge=0)
     chunk_project_id: str
+    chunk_asset_id: str
 
 
     class config:
@@ -17,9 +18,8 @@ class DataChunk(BaseModel):
     def get_indecies(cls):
         return [
             {
-                "key":["chunk_project_id",1],
-                "name":"chunk_project_id_index",
-                "unique":False
-
+                "key": [("chunk_project_id", 1)],
+                "name": "chunk_project_id_index",
+                "unique": False
             }
         ]

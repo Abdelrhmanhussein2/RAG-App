@@ -6,7 +6,7 @@ class ChunkModel(BaseDataModel):
     def __init__(self,db_client):
         super().__init__(db_client)
         self.collection = self.db_client[DataBaseEnum.COLLECTION_CHUNKS.value]
-    @staticmethod
+    @classmethod
     async def create_instance(cls,db_client:object):
         instance=cls(db_client)
         await instance.init_collection()
