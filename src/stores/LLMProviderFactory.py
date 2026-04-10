@@ -6,7 +6,7 @@ class LLMProviderFactory:
     def __init__(self,config):
         self.config=config
         
-    def get_llm_provider(self, provider: str):
+    def create(self, provider: str):
         if provider == LLMEnums.COHERE.value:
             return CohereProvider(
                 api_key=self.config.COHERE_API_KEY,

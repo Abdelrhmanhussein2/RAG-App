@@ -1,26 +1,25 @@
 from ..LLMinterface import LLMInterface
 from groq import Groq
 import logging
-from helpers.config import settings
 from ..LLMEnums import GroqEnums
 class GroqProvider(LLMInterface):
     def __init__(self, 
-                 api_key: str = None, 
-                 max_input_tokens: int = None, 
-                 max_output_tokens: int = None, 
-                 temperature: float = None):
+                 api_key: str, 
+                 max_input_tokens: int = 1000, 
+                 max_output_tokens: int = 1000, 
+                 temperature: float = 0.7):
         
-        self.api_key = api_key or settings.GROQ_API_KEY
-        self.temperature = temperature if temperature is not None else settings.GROQ_TEMPERATURE
-        self.max_output_tokens = max_output_tokens if max_output_tokens is not None else settings.GROQ_MAX_OUTPUT_TOKENS
-        self.max_input_tokens = max_input_tokens if max_input_tokens is not None else settings.GROQ_MAX_INPUT_TOKENS
+        self.api_key = api_key
+        self.temperature = temperature
+        self.max_output_tokens = max_output_tokens
+        self.max_input_tokens = max_input_tokens
         
-        self.generation_model_id = settings.GROQ_MODEL
+        self.generation_model_id = None
         self.embedding_model_id = None
         self.embedding_size = None
         
         if not self.api_key:
-            raise ValueError("API Key for Groq not found in settings or arguments.")
+            raise ValueError("API Key for Groq must be provided.")
 
         self.client = Groq(api_key=self.api_key)
         self.logger = logging.getLogger(__name__)
@@ -49,17 +48,14 @@ class GroqProvider(LLMInterface):
         messages = list(chat_history)
         messages.append(self.construct_prompt(prompt, GroqEnums.USER.value))
 
-        try:
-            response = self.client.chat.completions.create(
+        
+        response = self.client.chat.completions.create(
                 model=self.generation_model_id,
                 messages=messages,
                 temperature=current_temperature,
                 max_tokens=current_max_tokens
             )
-            return response.choices[0].message.content
-        except Exception as e:
-            self.logger.error(f"Error while generation: {e}")
-            return None
+        return response.choices[0].message.content
 
     def get_embedding(self, text: str, document_type: str = None):
         if self.client is None:
@@ -69,15 +65,12 @@ class GroqProvider(LLMInterface):
             self.logger.error("Embedding model is not set")
             return None
 
-        try:
-            response = self.client.embeddings.create(
+        
+        response = self.client.embeddings.create(
                 model=self.embedding_model_id,
                 input=text
             )
-            return response.data[0].embedding
-        except Exception as e:
-            self.logger.error(f"Embedding error: {e}")
-            return None
+        return response.data[0].embedding
 
     def construct_prompt(self, prompt: str, role: str = None):
         return {

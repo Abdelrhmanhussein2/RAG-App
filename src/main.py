@@ -24,13 +24,18 @@ async def startup_db_client():
     # settings = settings
     app.mongodb_client = AsyncIOMotorClient(settings.MONGO_URI)
     app.mongodb = app.mongodb_client[settings.MONGODB_DATABASE]
-    app.llm_provider_factory = LLMProviderFactory.create_provider(settings) 
     
-    app.generation_provider = app.llm_provider_factory.get_llm_provider(settings.DEFAULT_PROVIDER)
-    app.generation_provider.set_generation_model(settings.DEFAULT_GENERATION_MODEL)
+    # Initialize LLM Factory and Clients
+    llm_provider_factory = LLMProviderFactory(settings) 
     
-    app.embedding_provider = app.llm_provider_factory.get_llm_provider(settings.DEFAULT_PROVIDER)
-    app.embedding_provider.set_embedding_model(settings.DEFAULT_EMBEDDING_MODEL,settings.DEFAULT_EMBEDDING_SIZE)
+    # Generation client
+    app.generation_client = llm_provider_factory.create(provider=settings.GENERATION_BACKEND)
+    app.generation_client.set_generation_model(model_id=settings.GENERATION_MODEL_ID)
+    
+    # Embedding client
+    app.embedding_client = llm_provider_factory.create(provider=settings.EMBEDDING_BACKEND)
+    app.embedding_client.set_embedding_model(model_id=settings.EMBEDDING_MODEL_ID,
+                                             embedding_size=settings.EMBEDDING_MODEL_SIZE)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

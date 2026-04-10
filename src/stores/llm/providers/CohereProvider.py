@@ -2,26 +2,26 @@ from ..LLMinterface import LLMInterface
 from ..LLMEnums import CohereEnums, DocumentTyprEnum
 import logging
 import cohere
-from helpers.config import settings
+import os
 
 class CohereProvider(LLMInterface):
     def __init__(self,
-                 api_key:str=None,
-                 max_input_tokens:int=None,
-                 max_output_tokens:int=None,
-                 temperature:float=None):
+                 api_key:str,
+                 max_input_tokens:int=1000,
+                 max_output_tokens:int=1000,
+                 temperature:float=0.7):
         
-        self.api_key = api_key or settings.COHERE_API_KEY
-        self.temperature = temperature if temperature is not None else settings.COHERE_TEMPERATURE
-        self.max_output_tokens = max_output_tokens if max_output_tokens is not None else settings.COHERE_MAX_OUTPUT_TOKENS
-        self.max_input_tokens = max_input_tokens if max_input_tokens is not None else settings.COHERE_MAX_INPUT_TOKENS
+        self.api_key = api_key
+        self.temperature = temperature
+        self.max_output_tokens = max_output_tokens
+        self.max_input_tokens = max_input_tokens
         
-        self.generation_model_id = settings.COHERE_MODEL
-        self.embedding_model_id = settings.COHERE_EMBEDDING_MODEL
-        self.embedding_size = settings.COHERE_EMBEDDING_SIZE
+        self.generation_model_id = None # Will be set via set_generation_model or manually
+        self.embedding_model_id = None
+        self.embedding_size = None
 
         if not self.api_key:
-            raise ValueError("API Key for Cohere not found in settings or arguments.")
+            raise ValueError("API Key for Cohere must be provided.")
 
         self.client = cohere.Client(api_key=self.api_key)
         self.logger = logging.getLogger(__name__)
