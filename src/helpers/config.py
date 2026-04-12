@@ -32,6 +32,11 @@ class setting(BaseSettings):
     EMBEDDING_MODEL_ID: str = None
     EMBEDDING_MODEL_SIZE: int = None
 
+    # Vector Database Configuration
+    VECTOR_DB_BACKEND: str = None
+    QDRANT_URL: str = None
+    QDRANT_API_KEY: str = None
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

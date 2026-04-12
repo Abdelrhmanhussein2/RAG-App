@@ -12,3 +12,4 @@ Motor==3.7.1
 openai==1.40.0
 groq
 cohere==5.15.0
+qdrant-client

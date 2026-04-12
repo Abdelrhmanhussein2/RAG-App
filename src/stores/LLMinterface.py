@@ -12,7 +12,7 @@ class LLMInterface(ABC):
         pass
     
     @abstractmethod
-    def generate_response(self, prompt:str, chat_history:list[] ,max_tokens:int=1000,temperature:float=None):
+    def generate_response(self, prompt:str, chat_history:list ,max_tokens:int,temperature:float=None):
         pass
     
     @abstractmethod
