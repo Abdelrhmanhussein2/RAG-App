@@ -31,7 +31,7 @@ class VectorDBinterface(ABC):
         pass
 
     @abstractmethod
-    def insert_one(self, collection_name: str, text: str, metadata: dict, record_id: str = None,vector:list):
+    def insert_one(self, collection_name: str, text: str, vector: list, metadata: dict = None, record_id: str = None):
         pass
 
     @abstractmethod

@@ -34,8 +34,8 @@ class setting(BaseSettings):
 
     # Vector Database Configuration
     VECTOR_DB_BACKEND: str = None
-    QDRANT_URL: str = None
-    QDRANT_API_KEY: str = None
+    VECTOR_DB_PATH: str = None
+    VECTOR_DB_DISTANCE: str = None
 
     class Config:
         env_file = ".env"
